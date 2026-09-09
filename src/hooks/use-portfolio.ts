@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { defaultPortfolio, fetchPublishedPortfolio, loadPortfolio, publishPortfolio, savePortfolio, type PortfolioData } from '@/lib/portfolio';
+import { defaultPortfolio, fetchPublishedPortfolio, loadPortfolio, publishPortfolio, savePortfolio, type PortfolioData, type PublishResult } from '@/lib/portfolio';
 
 export function usePortfolio() {
   const [portfolio, setPortfolio] = useState<PortfolioData>(() => loadPortfolio());
@@ -15,7 +15,7 @@ export function usePortfolio() {
     setPortfolio(next);
     savePortfolio(next); // keep an offline copy on this device
     if (password) return publishPortfolio(next, password);
-    return Promise.resolve(true);
+    return Promise.resolve<PublishResult>('ok');
   }, []);
 
   const resetPortfolio = useCallback((password?: string) => {
@@ -23,7 +23,7 @@ export function usePortfolio() {
     setPortfolio(fresh);
     savePortfolio(fresh);
     if (password) return publishPortfolio(fresh, password);
-    return Promise.resolve(true);
+    return Promise.resolve<PublishResult>('ok');
   }, []);
 
   return { portfolio, updatePortfolio, resetPortfolio };

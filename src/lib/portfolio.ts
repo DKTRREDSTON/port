@@ -110,15 +110,50 @@ export async function fetchPublishedPortfolio(): Promise<PortfolioData | null> {
   }
 }
 
-export async function publishPortfolio(data: PortfolioData, password: string): Promise<boolean> {
+export type PublishResult = 'ok' | 'wrong-password' | 'error';
+
+export async function publishPortfolio(data: PortfolioData, password: string): Promise<PublishResult> {
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'save', password, data }),
     });
-    return res.ok;
+    if (res.ok) return 'ok';
+    if (res.status === 403) return 'wrong-password';
+    return 'error';
   } catch {
-    return false;
+    return 'error';
+  }
+}
+
+// Uploads an image/file (as a data URL from the editor) to online storage
+// and returns its public URL, so big assets never bloat the saved content.
+export async function uploadPortfolioAsset(password: string, dataUrl: string, name: string): Promise<string | null> {
+  try {
+    const blob = await (await fetch(dataUrl)).blob();
+    const contentBase64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+    const ext = (blob.type.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '');
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'uploadImage',
+        password,
+        filename: `${name}-${Date.now()}.${ext}`,
+        contentType: blob.type,
+        contentBase64,
+      }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.file_url || null;
+  } catch {
+    return null;
   }
 }

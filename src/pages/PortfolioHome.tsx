@@ -7,8 +7,8 @@ import type { PortfolioData, Project } from '@/lib/portfolio';
 
 type PortfolioHomeProps = {
   portfolio: PortfolioData;
-  onSave: (data: PortfolioData, password?: string) => void | Promise<boolean>;
-  onReset: (password?: string) => void | Promise<boolean>;
+  onSave: (data: PortfolioData, password?: string) => void | Promise<import('@/lib/portfolio').PublishResult>;
+  onReset: (password?: string) => void | Promise<import('@/lib/portfolio').PublishResult>;
 };
 
 function ProjectGallery({ projects }: { projects: Project[] }) {

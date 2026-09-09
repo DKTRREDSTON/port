@@ -1,13 +1,13 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { ImagePlus, Lock, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
-import type { PortfolioData, Project } from '@/lib/portfolio';
+import { uploadPortfolioAsset, type PortfolioData, type Project, type PublishResult } from '@/lib/portfolio';
 
 const fallbackProjectImage = `${import.meta.env.BASE_URL}project-light.png`;
 
 type PortfolioEditorProps = {
   portfolio: PortfolioData;
-  onSave: (data: PortfolioData, password?: string) => void | Promise<boolean>;
-  onReset: (password?: string) => void | Promise<boolean>;
+  onSave: (data: PortfolioData, password?: string) => void | Promise<PublishResult>;
+  onReset: (password?: string) => void | Promise<PublishResult>;
   onClose: () => void;
 };
 
@@ -24,33 +24,67 @@ function Field({ label, value, onChange, multiline = false }: { label: string; v
 export function PortfolioEditor({ portfolio, onSave, onReset, onClose }: PortfolioEditorProps) {
   const [draft, setDraft] = useState<PortfolioData>(() => structuredClone(portfolio));
   const [password, setPassword] = useState('');
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveState, setSaveState] = useState<'idle' | 'uploading' | 'saving' | 'saved' | 'wrong-password' | 'failed'>('idle');
 
   useEffect(() => setDraft(structuredClone(portfolio)), [portfolio]);
 
+  // Upload any image/file still stored as a data URL to online storage,
+  // so only light URLs are saved with the content.
+  async function uploadDraftAssets(data: PortfolioData, pass: string): Promise<PortfolioData | null> {
+    const projects: Project[] = [];
+    for (const project of data.projects) {
+      let { image, downloadUrl } = project;
+      if (image.startsWith('data:')) {
+        const url = await uploadPortfolioAsset(pass, image, `project-${project.id}-image`);
+        if (!url) return null;
+        image = url;
+      }
+      if (downloadUrl.startsWith('data:')) {
+        const url = await uploadPortfolioAsset(pass, downloadUrl, `project-${project.id}-file`);
+        if (!url) return null;
+        downloadUrl = url;
+      }
+      projects.push({ ...project, image, downloadUrl });
+    }
+    return { ...data, projects };
+  }
+
   async function handleSave() {
-    if (!password.trim()) {
-      setSaveState('error');
+    const pass = password.trim();
+    if (!pass) {
+      setSaveState('wrong-password');
       return;
     }
+    setSaveState('uploading');
+    const withUrls = await uploadDraftAssets(draft, pass);
+    if (!withUrls) {
+      setSaveState('failed');
+      return;
+    }
+    setDraft(withUrls);
     setSaveState('saving');
-    const ok = await onSave(draft, password.trim());
-    if (ok) {
+    const result = await onSave(withUrls, pass);
+    if (result === 'ok') {
       setSaveState('saved');
       window.setTimeout(onClose, 900);
     } else {
-      setSaveState('error');
+      setSaveState(result === 'wrong-password' ? 'wrong-password' : 'failed');
     }
   }
 
   async function handleReset() {
-    if (!password.trim()) {
-      setSaveState('error');
+    const pass = password.trim();
+    if (!pass) {
+      setSaveState('wrong-password');
       return;
     }
     setSaveState('saving');
-    const ok = await onReset(password.trim());
-    setSaveState(ok ? 'saved' : 'error');
+    const result = await onReset(pass);
+    if (result === 'ok') {
+      setSaveState('saved');
+    } else {
+      setSaveState(result === 'wrong-password' ? 'wrong-password' : 'failed');
+    }
   }
 
   function updateProject(id: string, patch: Partial<Project>) {
@@ -156,13 +190,14 @@ export function PortfolioEditor({ portfolio, onSave, onReset, onClose }: Portfol
             />
           </label>
           <div className="flex items-center gap-3">
-            {saveState === 'saving' && <span className="text-xs text-black/50" data-testid="save-status">جارٍ النشر…</span>}
+            {(saveState === 'uploading' || saveState === 'saving') && <span className="text-xs text-black/50" data-testid="save-status">{saveState === 'uploading' ? 'جارٍ رفع الصور…' : 'جارٍ النشر…'}</span>}
             {saveState === 'saved' && <span className="text-xs font-semibold text-emerald-700" data-testid="save-status">تم النشر للجميع ✓</span>}
-            {saveState === 'error' && <span className="text-xs font-semibold text-red-600" data-testid="save-status">كلمة السر غير صحيحة</span>}
+            {saveState === 'wrong-password' && <span className="text-xs font-semibold text-red-600" data-testid="save-status">كلمة السر غير صحيحة — أدخلها ثم أعد المحاولة</span>}
+            {saveState === 'failed' && <span className="text-xs font-semibold text-red-600" data-testid="save-status">فشل رفع الصورة أو النشر — تحقق من الاتصال وحاول مرة أخرى</span>}
             <button
               type="button"
               onClick={handleSave}
-              disabled={saveState === 'saving'}
+              disabled={saveState === 'saving' || saveState === 'uploading'}
               className="inline-flex items-center gap-2 rounded-full bg-[#101216] px-5 py-2.5 text-sm text-[#eef0e7] transition hover:-translate-y-0.5 disabled:opacity-60"
               data-testid="button-save-portfolio"
             >
