@@ -86,3 +86,39 @@ export function loadPortfolio(): PortfolioData {
 export function savePortfolio(data: PortfolioData) {
   localStorage.setItem(storageKey, JSON.stringify(data));
 }
+// --- Online sync (edits are published for everyone) ---
+const API_URL = 'https://superagent-805721ee.base44.app/functions/portfolioData';
+
+export async function fetchPublishedPortfolio(): Promise<PortfolioData | null> {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get' }),
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (!json.data) return null;
+    const parsed = json.data as Partial<PortfolioData>;
+    return {
+      ...defaultPortfolio,
+      ...parsed,
+      projects: Array.isArray(parsed.projects) && parsed.projects.length ? parsed.projects : defaultPortfolio.projects,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function publishPortfolio(data: PortfolioData, password: string): Promise<boolean> {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save', password, data }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}

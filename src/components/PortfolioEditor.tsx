@@ -1,13 +1,13 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
-import { ImagePlus, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
+import { ImagePlus, Lock, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
 import type { PortfolioData, Project } from '@/lib/portfolio';
 
 const fallbackProjectImage = `${import.meta.env.BASE_URL}project-light.png`;
 
 type PortfolioEditorProps = {
   portfolio: PortfolioData;
-  onSave: (data: PortfolioData) => void;
-  onReset: () => void;
+  onSave: (data: PortfolioData, password?: string) => void | Promise<boolean>;
+  onReset: (password?: string) => void | Promise<boolean>;
   onClose: () => void;
 };
 
@@ -23,8 +23,35 @@ function Field({ label, value, onChange, multiline = false }: { label: string; v
 
 export function PortfolioEditor({ portfolio, onSave, onReset, onClose }: PortfolioEditorProps) {
   const [draft, setDraft] = useState<PortfolioData>(() => structuredClone(portfolio));
+  const [password, setPassword] = useState('');
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   useEffect(() => setDraft(structuredClone(portfolio)), [portfolio]);
+
+  async function handleSave() {
+    if (!password.trim()) {
+      setSaveState('error');
+      return;
+    }
+    setSaveState('saving');
+    const ok = await onSave(draft, password.trim());
+    if (ok) {
+      setSaveState('saved');
+      window.setTimeout(onClose, 900);
+    } else {
+      setSaveState('error');
+    }
+  }
+
+  async function handleReset() {
+    if (!password.trim()) {
+      setSaveState('error');
+      return;
+    }
+    setSaveState('saving');
+    const ok = await onReset(password.trim());
+    setSaveState(ok ? 'saved' : 'error');
+  }
 
   function updateProject(id: string, patch: Partial<Project>) {
     setDraft((current) => ({ ...current, projects: current.projects.map((project) => project.id === id ? { ...project, ...patch } : project) }));
@@ -82,9 +109,9 @@ export function PortfolioEditor({ portfolio, onSave, onReset, onClose }: Portfol
               <Field label="البريد الإلكتروني" value={draft.email} onChange={(value) => setDraft({ ...draft, email: value })} />
               <Field label="الهاتف" value={draft.phone} onChange={(value) => setDraft({ ...draft, phone: value })} />
               <div className="border-b border-black/10 pb-3 pt-4"><p className="mono text-[10px] text-black/45">02 / CONTROLS</p><h3 className="mt-1 font-semibold">إدارة المحتوى</h3></div>
-              <p className="text-xs leading-6 text-black/55">التغييرات تحفظ محلياً في هذا المتصفح. لإضافة صورة، استخدم زر رفع الصورة داخل كل مشروع.</p>
+              <p className="text-xs leading-6 text-black/55">التغييرات تُنشر أونلاين وتظهر لكل الزوار على كل الأجهزة. أدخل كلمة سر النشر في الأسفل قبل الحفظ. لإضافة صورة، استخدم زر رفع الصورة داخل كل مشروع.</p>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={onReset} className="inline-flex items-center gap-2 rounded-full border border-black/15 px-4 py-2 text-xs transition hover:bg-black hover:text-white" data-testid="button-reset-portfolio"><RotateCcw size={14} /> إعادة الافتراضي</button>
+                <button type="button" onClick={handleReset} className="inline-flex items-center gap-2 rounded-full border border-black/15 px-4 py-2 text-xs transition hover:bg-black hover:text-white" data-testid="button-reset-portfolio"><RotateCcw size={14} /> إعادة الافتراضي</button>
                 <button type="button" onClick={addProject} className="inline-flex items-center gap-2 rounded-full border border-black/15 px-4 py-2 text-xs transition hover:bg-black hover:text-white" data-testid="button-add-project"><Plus size={14} /> مشروع جديد</button>
               </div>
             </div>
@@ -116,9 +143,32 @@ export function PortfolioEditor({ portfolio, onSave, onReset, onClose }: Portfol
             </div>
           </div>
         </div>
-        <footer className="flex items-center justify-between border-t border-black/10 bg-[#e5e7de] px-5 py-4 md:px-8">
-          <span className="mono text-[10px] text-black/40">LOCAL / SAVED ON DEVICE</span>
-          <button type="button" onClick={() => { onSave(draft); onClose(); }} className="inline-flex items-center gap-2 rounded-full bg-[#101216] px-5 py-2.5 text-sm text-[#eef0e7] transition hover:-translate-y-0.5" data-testid="button-save-portfolio"><Save size={15} /> حفظ التغييرات</button>
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-black/10 bg-[#e5e7de] px-5 py-4 md:px-8">
+          <label className="flex items-center gap-2 text-xs text-black/60" aria-label="كلمة سر النشر">
+            <Lock size={14} className="text-black/45" />
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => { setPassword(event.target.value); setSaveState('idle'); }}
+              placeholder="كلمة سر النشر"
+              className="field max-w-40"
+              data-testid="input-publish-password"
+            />
+          </label>
+          <div className="flex items-center gap-3">
+            {saveState === 'saving' && <span className="text-xs text-black/50" data-testid="save-status">جارٍ النشر…</span>}
+            {saveState === 'saved' && <span className="text-xs font-semibold text-emerald-700" data-testid="save-status">تم النشر للجميع ✓</span>}
+            {saveState === 'error' && <span className="text-xs font-semibold text-red-600" data-testid="save-status">كلمة السر غير صحيحة</span>}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveState === 'saving'}
+              className="inline-flex items-center gap-2 rounded-full bg-[#101216] px-5 py-2.5 text-sm text-[#eef0e7] transition hover:-translate-y-0.5 disabled:opacity-60"
+              data-testid="button-save-portfolio"
+            >
+              <Save size={15} /> حفظ ونشر
+            </button>
+          </div>
         </footer>
       </section>
     </div>
