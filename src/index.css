@@ -86,10 +86,45 @@ button { cursor: pointer; }
 .dragging * { cursor: grabbing !important; user-select: none; }
 
 .opening-overlay {
-  position: fixed; inset: 0; z-index: 100; background: #101216; color: #eef0e8;
-  transition: clip-path 1.15s cubic-bezier(.7,0,.15,1), opacity .7s ease;
-  clip-path: circle(var(--reveal-size, 0px) at var(--reveal-x, 50%) var(--reveal-y, 50%));
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: #030405;
+  color: #eef0e8;
+  transition:
+    --reveal-radius 1.55s cubic-bezier(.77, 0, .175, 1),
+    opacity .45s ease;
+
+  -webkit-mask-image:
+    radial-gradient(
+      circle var(--reveal-radius, 155px)
+      at var(--reveal-x, 50%) var(--reveal-y, 50%),
+      transparent 0,
+      transparent calc(var(--reveal-radius, 155px) - 1px),
+      #000 var(--reveal-radius, 155px)
+    );
+
+  mask-image:
+    radial-gradient(
+      circle var(--reveal-radius, 155px)
+      at var(--reveal-x, 50%) var(--reveal-y, 50%),
+      transparent 0,
+      transparent calc(var(--reveal-radius, 155px) - 1px),
+      #000 var(--reveal-radius, 155px)
+    );
+
+  pointer-events: auto;
+}
+
+.opening-overlay.is-cleared {
+  opacity: 0;
   pointer-events: none;
+}
+
+@property --reveal-radius {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 155px;
 }
 .opening-overlay.is-visible { clip-path: circle(150% at var(--reveal-x, 50%) var(--reveal-y, 50%)); pointer-events: auto; }
 .opening-overlay.is-cleared { opacity: 0; clip-path: circle(0 at 50% 50%); }
