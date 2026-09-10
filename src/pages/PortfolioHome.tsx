@@ -125,16 +125,16 @@ export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps
   const [checkingCode, setCheckingCode] = useState(false);
   const [unlockedPassword, setUnlockedPassword] = useState('');
   const tapCount = useRef(0);
-  const tapTimer = useRef<number | undefined>(undefined);
+  const lastTapAt = useRef(0);
 
-  // Secret trigger: tap the hero name 5 times quickly (works great on a phone)
+  // Secret trigger: tap the name 5 times within 5 seconds (easy on a phone)
   function handleSecretTap() {
+    const now = Date.now();
+    if (now - lastTapAt.current > 5000) tapCount.current = 0;
+    lastTapAt.current = now;
     tapCount.current += 1;
-    window.clearTimeout(tapTimer.current);
-    tapTimer.current = window.setTimeout(() => { tapCount.current = 0; }, 1200);
     if (tapCount.current >= 5) {
       tapCount.current = 0;
-      window.clearTimeout(tapTimer.current);
       setCode('');
       setCodeError(false);
       setCodePromptOpen(true);
@@ -175,7 +175,7 @@ export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps
     <main className="site-noise min-h-[100dvh] overflow-hidden bg-[#b9e3f0] text-[#101216]" dir="rtl">
       {!entered && <OpeningOverlay onComplete={() => setEntered(true)} />}
       <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-6 py-6 md:px-10 md:py-8">
-        <Link href="/" className="group flex items-center gap-3" data-testid="link-home">
+        <Link href="/" onPointerDown={handleSecretTap} className="group flex items-center gap-3 touch-manipulation" data-testid="link-home">
           <span className="flex h-9 w-9 items-center justify-center rounded-full border border-black text-xs font-semibold transition group-hover:rotate-12">ن</span>
           <span className="hidden text-xs font-semibold tracking-[.08em] sm:inline">ناصر وائل عباس</span>
         </Link>
@@ -187,7 +187,7 @@ export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps
       <section className="relative mx-auto grid min-h-[calc(100dvh-5rem)] max-w-7xl items-center gap-12 px-6 pb-16 pt-8 md:grid-cols-[1.1fr_.9fr] md:px-10 md:pb-24 md:pt-16">
         <div className="reveal reveal-1 relative z-[1]">
           <p className="mb-8 flex items-center gap-3 text-xs font-semibold tracking-[.08em]"><span className="h-px w-10 bg-black/45" /> {portfolio.role}</p>
-          <h1 onClick={handleSecretTap} className="display max-w-4xl cursor-default select-none text-[clamp(4.7rem,12.5vw,10rem)] leading-[.8] tracking-[-.065em]" data-testid="text-hero-name">{portfolio.name.split(' ').map((part, index) => <span key={`${part}-${index}`} className="block">{part}</span>)}</h1>
+          <h1 onPointerDown={handleSecretTap} className="display max-w-4xl cursor-default select-none touch-manipulation text-[clamp(4.7rem,12.5vw,10rem)] leading-[.8] tracking-[-.065em]" data-testid="text-hero-name">{portfolio.name.split(' ').map((part, index) => <span key={`${part}-${index}`} className="block">{part}</span>)}</h1>
           <p className="mt-10 max-w-md text-base leading-8 text-black/65 md:text-lg" data-testid="text-hero-bio">{portfolio.bio}</p>
           <a href="#projects" className="group mt-8 inline-flex items-center gap-3 border-b border-black pb-2 text-sm font-semibold transition hover:gap-5" data-testid="link-view-projects">استكشف الأعمال <ArrowLeft size={16} className="transition group-hover:-translate-x-1" /></a>
         </div>
@@ -195,7 +195,7 @@ export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps
           <div className="pulse-ring absolute h-[19rem] w-[19rem] rounded-full border border-black/15 md:h-[29rem] md:w-[29rem]" />
           <div className="pulse-ring absolute h-[14rem] w-[14rem] rounded-full border border-black/10 [animation-delay:1s] md:h-[22rem] md:w-[22rem]" />
           <div className="float-slow relative h-[20rem] w-[15rem] rotate-[7deg] overflow-hidden rounded-[8rem] rounded-br-[3rem] border-[10px] border-[#101216] bg-[#7fc7dc] shadow-[18px_24px_0_rgba(16,18,22,.12)] md:h-[31rem] md:w-[23rem]">
-            <img src={portfolio.portrait} alt="صورة تجريدية تمثل ناصر" className="h-full w-full object-cover grayscale-[.1]" data-testid="img-hero-portrait" />
+            <img src={portfolio.portrait} alt="صورة تجريدية تمثل ناصر" onPointerDown={handleSecretTap} className="h-full w-full touch-manipulation object-cover grayscale-[.1]" data-testid="img-hero-portrait" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
             <span className="absolute bottom-5 right-5 mono text-[9px] tracking-[.16em] text-white/80">LOOK / 01</span>
           </div>
