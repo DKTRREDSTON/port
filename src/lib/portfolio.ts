@@ -110,6 +110,20 @@ export async function fetchPublishedPortfolio(): Promise<PortfolioData | null> {
   }
 }
 
+// Checks the secret code without saving anything — used to unlock the editor.
+export async function verifyPortfolioCode(password: string): Promise<boolean> {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'verify', password }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export type PublishResult = 'ok' | 'wrong-password' | 'error';
 
 export async function publishPortfolio(data: PortfolioData, password: string): Promise<PublishResult> {

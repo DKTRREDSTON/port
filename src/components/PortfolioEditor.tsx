@@ -6,6 +6,7 @@ const fallbackProjectImage = `${import.meta.env.BASE_URL}project-light.png`;
 
 type PortfolioEditorProps = {
   portfolio: PortfolioData;
+  initialPassword?: string;
   onSave: (data: PortfolioData, password?: string) => void | Promise<PublishResult>;
   onReset: (password?: string) => void | Promise<PublishResult>;
   onClose: () => void;
@@ -21,9 +22,9 @@ function Field({ label, value, onChange, multiline = false }: { label: string; v
   );
 }
 
-export function PortfolioEditor({ portfolio, onSave, onReset, onClose }: PortfolioEditorProps) {
+export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onReset, onClose }: PortfolioEditorProps) {
   const [draft, setDraft] = useState<PortfolioData>(() => structuredClone(portfolio));
-  const [password, setPassword] = useState('');
+  const [password, setPassword] = useState(initialPassword);
   const [saveState, setSaveState] = useState<'idle' | 'uploading' | 'saving' | 'saved' | 'wrong-password' | 'failed'>('idle');
 
   useEffect(() => setDraft(structuredClone(portfolio)), [portfolio]);

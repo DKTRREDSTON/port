@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { ArrowLeft, ArrowUpLeft, Instagram, Mail, MapPin, Menu, Pencil, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState, type FormEvent, type PointerEvent } from 'react';
+import { ArrowLeft, ArrowUpLeft, Instagram, Mail, MapPin, Sparkles } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { OpeningOverlay } from '@/components/OpeningOverlay';
 import { PortfolioEditor } from '@/components/PortfolioEditor';
-import type { PortfolioData, Project } from '@/lib/portfolio';
+import { verifyPortfolioCode, type PortfolioData, type Project } from '@/lib/portfolio';
 
 type PortfolioHomeProps = {
   portfolio: PortfolioData;
@@ -119,17 +119,57 @@ function ProjectGallery({ projects }: { projects: Project[] }) {
 export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps) {
   const [entered, setEntered] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [codePromptOpen, setCodePromptOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [codeError, setCodeError] = useState(false);
+  const [checkingCode, setCheckingCode] = useState(false);
+  const [unlockedPassword, setUnlockedPassword] = useState('');
+  const tapCount = useRef(0);
+  const tapTimer = useRef<number | undefined>(undefined);
 
+  // Secret trigger: tap the hero name 5 times quickly (works great on a phone)
+  function handleSecretTap() {
+    tapCount.current += 1;
+    window.clearTimeout(tapTimer.current);
+    tapTimer.current = window.setTimeout(() => { tapCount.current = 0; }, 1200);
+    if (tapCount.current >= 5) {
+      tapCount.current = 0;
+      window.clearTimeout(tapTimer.current);
+      setCode('');
+      setCodeError(false);
+      setCodePromptOpen(true);
+    }
+  }
+
+  // Also allow opening the prompt via the URL: site.com/#edit
   useEffect(() => {
-    function openEditor(event: KeyboardEvent) {
-      if (event.ctrlKey && event.shiftKey && event.altKey && event.key.toLowerCase() === 'w') {
-        event.preventDefault();
-        setEditorOpen(true);
+    function checkHash() {
+      if (window.location.hash === '#edit') {
+        setCode('');
+        setCodeError(false);
+        setCodePromptOpen(true);
       }
     }
-    window.addEventListener('keydown', openEditor);
-    return () => window.removeEventListener('keydown', openEditor);
+    checkHash();
+    window.addEventListener('hashchange', checkHash);
+    return () => window.removeEventListener('hashchange', checkHash);
   }, []);
+
+  async function handleCodeSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!code.trim() || checkingCode) return;
+    setCheckingCode(true);
+    setCodeError(false);
+    const ok = await verifyPortfolioCode(code.trim());
+    setCheckingCode(false);
+    if (ok) {
+      setUnlockedPassword(code.trim());
+      setCodePromptOpen(false);
+      setEditorOpen(true);
+    } else {
+      setCodeError(true);
+    }
+  }
 
   return (
     <main className="site-noise min-h-[100dvh] overflow-hidden bg-[#b9e3f0] text-[#101216]" dir="rtl">
@@ -140,7 +180,6 @@ export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps
           <span className="hidden text-xs font-semibold tracking-[.08em] sm:inline">ناصر وائل عباس</span>
         </Link>
         <div className="flex items-center gap-4">
-          <button type="button" onClick={() => setEditorOpen(true)} className="group flex items-center gap-2 text-xs font-semibold" data-testid="button-open-editor"><Pencil size={14} className="transition group-hover:-rotate-12" /> <span className="hidden sm:inline">تحرير المعرض</span></button>
           <button type="button" onClick={() => document.getElementById('contact')?.scrollIntoView()} className="rounded-full bg-[#101216] px-4 py-2 text-xs text-[#b9e3f0] transition hover:-translate-y-0.5" data-testid="button-contact-nav">تواصل</button>
         </div>
       </header>
@@ -148,7 +187,7 @@ export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps
       <section className="relative mx-auto grid min-h-[calc(100dvh-5rem)] max-w-7xl items-center gap-12 px-6 pb-16 pt-8 md:grid-cols-[1.1fr_.9fr] md:px-10 md:pb-24 md:pt-16">
         <div className="reveal reveal-1 relative z-[1]">
           <p className="mb-8 flex items-center gap-3 text-xs font-semibold tracking-[.08em]"><span className="h-px w-10 bg-black/45" /> {portfolio.role}</p>
-          <h1 className="display max-w-4xl text-[clamp(4.7rem,12.5vw,10rem)] leading-[.8] tracking-[-.065em]" data-testid="text-hero-name">{portfolio.name.split(' ').map((part, index) => <span key={`${part}-${index}`} className="block">{part}</span>)}</h1>
+          <h1 onClick={handleSecretTap} className="display max-w-4xl cursor-default select-none text-[clamp(4.7rem,12.5vw,10rem)] leading-[.8] tracking-[-.065em]" data-testid="text-hero-name">{portfolio.name.split(' ').map((part, index) => <span key={`${part}-${index}`} className="block">{part}</span>)}</h1>
           <p className="mt-10 max-w-md text-base leading-8 text-black/65 md:text-lg" data-testid="text-hero-bio">{portfolio.bio}</p>
           <a href="#projects" className="group mt-8 inline-flex items-center gap-3 border-b border-black pb-2 text-sm font-semibold transition hover:gap-5" data-testid="link-view-projects">استكشف الأعمال <ArrowLeft size={16} className="transition group-hover:-translate-x-1" /></a>
         </div>
@@ -198,8 +237,31 @@ export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps
         <span className="mono tracking-[.16em]">NWA / VISUAL ARCHIVE</span>
         <div className="flex items-center gap-5"><a href={`mailto:${portfolio.email}`} className="transition hover:underline" data-testid="link-footer-email">البريد</a><a href="https://instagram.com" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition hover:underline" data-testid="link-instagram"><Instagram size={13} /> انستغرام</a><span className="text-black/45">© 2025</span></div>
       </footer>
-      {editorOpen && <PortfolioEditor portfolio={portfolio} onSave={onSave} onReset={onReset} onClose={() => setEditorOpen(false)} />}
-      <button type="button" onClick={() => setEditorOpen(true)} className="fixed bottom-5 left-5 z-40 flex h-10 w-10 items-center justify-center rounded-full bg-black text-[#b9e3f0] shadow-xl transition hover:rotate-90" aria-label="فتح محرر المحتوى" data-testid="button-floating-editor"><Menu size={16} /></button>
+      {codePromptOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-6 backdrop-blur-sm" onClick={() => setCodePromptOpen(false)}>
+          <form dir="rtl" onSubmit={handleCodeSubmit} onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl border border-black/15 bg-[#f4fbfd] p-6 shadow-2xl" data-testid="code-prompt">
+            <p className="text-xs font-semibold tracking-[.08em] text-black/50">وضع التحرير</p>
+            <h2 className="display mt-1 text-3xl tracking-[-.04em]">أدخل الكود السري</h2>
+            <input
+              type="password"
+              inputMode="text"
+              autoComplete="off"
+              autoFocus
+              value={code}
+              onChange={(event) => { setCode(event.target.value); setCodeError(false); }}
+              placeholder="••••••••"
+              className="mono mt-5 w-full rounded-lg border border-black/20 bg-white px-4 py-3 text-center text-lg tracking-[.3em] outline-none focus:border-black"
+              data-testid="input-secret-code"
+            />
+            {codeError && <p className="mt-2 text-xs font-semibold text-red-600" data-testid="code-error">الكود غير صحيح — حاول مرة أخرى</p>}
+            <button type="submit" disabled={!code.trim() || checkingCode} className="mt-4 w-full rounded-full bg-[#101216] px-4 py-3 text-sm font-semibold text-[#b9e3f0] transition disabled:opacity-40" data-testid="button-unlock-editor">
+              {checkingCode ? 'جارٍ التحقق…' : 'فتح المحرر'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {editorOpen && <PortfolioEditor key={unlockedPassword} portfolio={portfolio} initialPassword={unlockedPassword} onSave={onSave} onReset={onReset} onClose={() => setEditorOpen(false)} />}
     </main>
   );
 }
