@@ -48,6 +48,11 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
+html, body {
+  /* Stop fast upward swipes from triggering Chrome's native pull-to-refresh —
+     that's the spinner/jump users see when flinging the page on mobile. */
+  overscroll-behavior-y: contain;
+}
 body {
   margin: 0;
   min-width: 320px;
