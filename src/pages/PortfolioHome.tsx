@@ -127,10 +127,10 @@ export function PortfolioHome({ portfolio, onSave, onReset }: PortfolioHomeProps
   const tapCount = useRef(0);
   const lastTapAt = useRef(0);
 
-  // Secret trigger: tap the name 5 times within 5 seconds (easy on a phone)
+  // Secret trigger: tap the name 5 times within 15 seconds (very forgiving)
   function handleSecretTap() {
     const now = Date.now();
-    if (now - lastTapAt.current > 5000) tapCount.current = 0;
+    if (now - lastTapAt.current > 15000) tapCount.current = 0;
     lastTapAt.current = now;
     tapCount.current += 1;
     if (tapCount.current >= 5) {
