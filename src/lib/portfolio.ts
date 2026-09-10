@@ -141,8 +141,8 @@ const defaultProjects: Project[] = [
   {
     id: 'orbit',
     year: '2024',
-    image: publicAsset('project-orbit.png'),
-    downloadUrl: publicAsset('project-orbit.png'),
+    image: publicAsset('project-orbit.jpg'),
+    downloadUrl: publicAsset('project-orbit.jpg'),
     externalUrl: 'https://nasserwael.com',
     title: bi('مدار', 'Orbit'),
     category: bi('هوية بصرية', 'Visual identity'),
@@ -151,8 +151,8 @@ const defaultProjects: Project[] = [
   {
     id: 'echo',
     year: '2023',
-    image: publicAsset('project-echo.png'),
-    downloadUrl: publicAsset('project-echo.png'),
+    image: publicAsset('project-echo.jpg'),
+    downloadUrl: publicAsset('project-echo.jpg'),
     externalUrl: 'https://nasserwael.com',
     title: bi('صدى', 'Echo'),
     category: bi('حملة · إخراج فني', 'Campaign · Art direction'),
@@ -161,8 +161,8 @@ const defaultProjects: Project[] = [
   {
     id: 'light',
     year: '2022',
-    image: publicAsset('project-light.png'),
-    downloadUrl: publicAsset('project-light.png'),
+    image: publicAsset('project-light.jpg'),
+    downloadUrl: publicAsset('project-light.jpg'),
     externalUrl: 'https://nasserwael.com',
     title: bi('ضوء جانبي', 'Side Light'),
     category: bi('تصوير · تركيب', 'Photography · Installation'),
@@ -175,7 +175,7 @@ export const defaultPortfolio: PortfolioData = {
   theme: defaultTheme,
   email: 'hello@nasserwael.com',
   phone: '+20 100 482 1973',
-  portrait: publicAsset('project-light.png'),
+  portrait: publicAsset('project-light.jpg'),
   projects: defaultProjects,
 };
 

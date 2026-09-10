@@ -2,7 +2,25 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 import { ImagePlus, Lock, Palette, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
 import { uploadPortfolioAsset, type Bi, type Content, type PortfolioData, type Project, type PublishResult } from '@/lib/portfolio';
 
-const fallbackProjectImage = `${import.meta.env.BASE_URL}project-light.png`;
+const fallbackProjectImage = `${import.meta.env.BASE_URL}project-light.jpg`;
+
+// Compress an image data URL in the browser before it is uploaded:
+// big phone photos shrink to ~1600px JPEG (~100-200KB) so the site stays fast.
+async function compressImage(dataUrl: string, maxWidth = 1600, quality = 0.82): Promise<string> {
+  try {
+    const img = new Image();
+    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = dataUrl; });
+    if (img.width <= maxWidth && dataUrl.length < 400_000) return dataUrl; // already small enough
+    const scale = Math.min(1, maxWidth / img.width);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    canvas.getContext('2d')?.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch {
+    return dataUrl;
+  }
+}
 
 type PortfolioEditorProps = {
   portfolio: PortfolioData;
@@ -105,12 +123,13 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
     setDraft((current) => ({ ...current, projects: current.projects.filter((project) => project.id !== id) }));
   }
 
-  function readFile(target: 'portrait' | `project-image` | `project-file`, id: string | null, event: ChangeEvent<HTMLInputElement>) {
+  async function readFile(target: 'portrait' | 'project-image' | 'project-file', id: string | null, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
+    reader.onload = async () => {
+      let dataUrl = String(reader.result);
+      if (file.type.startsWith('image/')) dataUrl = await compressImage(dataUrl);
       if (target === 'portrait') setDraft((current) => ({ ...current, portrait: dataUrl }));
       else if (target === 'project-image' && id) updateProject(id, { image: dataUrl });
       else if (target === 'project-file' && id) updateProject(id, { downloadUrl: dataUrl });

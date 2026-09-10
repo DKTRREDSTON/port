@@ -151,6 +151,8 @@ button { cursor: pointer; }
 .field:focus { border-color: #101216; box-shadow: 0 0 0 3px rgba(16,18,22,.08); }
 
 @media (max-width: 767px) {
-  .project-card.is-side { transform: scale(.87); }
+  /* Blur filters on large images are very expensive on phones — keep it plain */
+  .project-card.is-side { filter: none; opacity: .62; transform: scale(.87); }
+  .project-card.is-near { filter: none; }
   .cursor-light { width: 150px; height: 150px; }
 }

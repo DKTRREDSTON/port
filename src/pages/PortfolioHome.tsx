@@ -30,6 +30,7 @@ function ProjectGallery({ projects, lang, content, theme }: { projects: Project[
   const [, navigate] = useLocation();
   const trackRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
+  const lastNavAt = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const t = pick(content, lang);
   const rtl = lang === 'ar';
@@ -59,7 +60,9 @@ function ProjectGallery({ projects, lang, content, theme }: { projects: Project[
 
   function endDrag(event: PointerEvent<HTMLDivElement>) {
     if (!dragRef.current.active || !trackRef.current) return;
+    const wasMoved = dragRef.current.moved;
     dragRef.current.active = false;
+    dragRef.current.moved = false;
     trackRef.current.releasePointerCapture(event.pointerId);
     const center = trackRef.current.scrollLeft + trackRef.current.clientWidth / 2;
     let nearest = 0;
@@ -70,10 +73,27 @@ function ProjectGallery({ projects, lang, content, theme }: { projects: Project[
       if (Math.abs(itemCenter - center) < distance) { distance = Math.abs(itemCenter - center); nearest = index; }
     });
     moveTo(nearest);
+
+    // Pointer capture makes the browser fire `click` on the track instead of
+    // the card, so a mouse click never reaches the card's onClick. Open the
+    // project directly from the pointerup position instead.
+    if (!wasMoved) {
+      const hit = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null;
+      const card = hit?.closest?.('button[data-project-id]');
+      const id = card?.getAttribute('data-project-id');
+      if (id) goTo(id);
+    }
+  }
+
+  function goTo(id: string) {
+    const now = Date.now();
+    if (now - lastNavAt.current < 350) return; // ignore the duplicate click that follows pointerup
+    lastNavAt.current = now;
+    navigate(`/project/${id}`);
   }
 
   function openProject(project: Project, index: number) {
-    if (!dragRef.current.moved) navigate(`/project/${project.id}`);
+    if (!dragRef.current.moved) goTo(project.id);
     else setActiveIndex(index);
     dragRef.current.moved = false;
   }
@@ -109,10 +129,11 @@ function ProjectGallery({ projects, lang, content, theme }: { projects: Project[
               onClick={() => openProject(project, index)}
               className={`project-card relative flex-none text-left ${state}`}
               style={{ width: 'clamp(18rem, 58vw, 50rem)' }}
+              data-project-id={project.id}
               data-testid={`card-project-${project.id}`}
             >
               <div className="relative aspect-[1.25/1] overflow-hidden rounded-[1.4rem] bg-[#8acadb] soft-shadow">
-                <img src={project.image} alt={project.title[lang]} className="h-full w-full object-cover" draggable={false} data-testid={`img-project-${project.id}`} />
+                <img src={project.image} alt={project.title[lang]} loading="lazy" decoding="async" className="h-full w-full object-cover" draggable={false} data-testid={`img-project-${project.id}`} />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/55 to-transparent p-5 pt-16 text-white md:p-7 md:pt-24">
                   <span className="display text-4xl md:text-6xl">{project.title[lang]}</span>
                   <ArrowUpLeft size={22} strokeWidth={1.3} />
