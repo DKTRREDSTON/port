@@ -159,5 +159,8 @@ button { cursor: pointer; }
   /* Blur filters on large images are very expensive on phones — keep it plain */
   .project-card.is-side { filter: none; opacity: .62; transform: scale(.87); }
   .project-card.is-near { filter: none; }
+  /* The fractal-noise texture overlay forces constant recompositing on mobile
+     GPUs while scrolling — that's the jank. Phones skip it entirely. */
+  .site-noise::after { display: none; }
   .cursor-light { width: 150px; height: 150px; }
 }

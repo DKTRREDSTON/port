@@ -1,6 +1,6 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { ImagePlus, Lock, Palette, Plus, RotateCcw, Save, Trash2, X } from 'lucide-react';
-import { uploadPortfolioAsset, type Bi, type Content, type PortfolioData, type Project, type PublishResult } from '@/lib/portfolio';
+import { uploadPortfolioAsset, type Bi, type ButtonAction, type Content, type PortfolioData, type Project, type PublishResult, type SiteButton } from '@/lib/portfolio';
 
 const fallbackProjectImage = `${import.meta.env.BASE_URL}project-light.jpg`;
 
@@ -30,7 +30,7 @@ type PortfolioEditorProps = {
   onClose: () => void;
 };
 
-type Tab = 'ar' | 'en' | 'theme' | 'projects' | 'general';
+type Tab = 'ar' | 'en' | 'theme' | 'projects' | 'buttons' | 'general';
 
 type FieldDef = [key: keyof Content, string, boolean?]; // key, label, multiline
 type GroupDef = { title: string; fields: FieldDef[] };
@@ -123,6 +123,31 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
     setDraft((current) => ({ ...current, projects: current.projects.filter((project) => project.id !== id) }));
   }
 
+  // --- custom buttons ---
+  const valueLabels: Record<ButtonAction, string> = {
+    link: 'الرابط (مثل example.com)',
+    email: 'البريد (مثل hello@site.com)',
+    phone: 'رقم الهاتف (مثل +20 100 000 0000)',
+    scroll: 'اسم القسم (about أو projects أو contact)',
+  };
+
+  function updateButton(id: string, patch: Partial<SiteButton>) {
+    setDraft((current) => ({ ...current, buttons: current.buttons.map((button) => button.id === id ? { ...button, ...patch } : button) }));
+  }
+
+  function updateButtonLabel(id: string, lang: 'ar' | 'en', value: string) {
+    setDraft((current) => ({ ...current, buttons: current.buttons.map((button) => button.id === id ? { ...button, label: { ...button.label, [lang]: value } } : button) }));
+  }
+
+  function addButton() {
+    const id = `button-${Date.now()}`;
+    setDraft((current) => ({ ...current, buttons: [...current.buttons, { id, label: { ar: 'زر جديد', en: 'New button' }, action: 'link', value: '' }] }));
+  }
+
+  function removeButton(id: string) {
+    setDraft((current) => ({ ...current, buttons: current.buttons.filter((button) => button.id !== id) }));
+  }
+
   async function readFile(target: 'portrait' | 'project-image' | 'project-file', id: string | null, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -208,6 +233,7 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
     { id: 'en', label: 'English texts' },
     { id: 'theme', label: 'الألوان' },
     { id: 'projects', label: 'المشاريع والصور' },
+    { id: 'buttons', label: 'الأزرار' },
     { id: 'general', label: 'التواصل والصورة' },
   ];
 
@@ -309,6 +335,41 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
                 </div>
               ))}
               <button type="button" onClick={addProject} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-black/25 py-4 text-sm font-semibold text-black/60 transition hover:bg-black/5" data-testid="button-add-project"><Plus size={16} /> إضافة مشروع</button>
+            </div>
+          )}
+
+          {tab === 'buttons' && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-semibold">الأزرار الخاصة — تظهر تحت زر الاستكشاف في أول الصفحة</div>
+              {draft.buttons.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-black/20 p-6 text-center text-xs leading-6 text-black/50">
+                  لا توجد أزرار بعد. اضغط «إضافة زر» لإنشاء زر جديد، اكتب اسمه، وحدد ماذا يفعل.
+                </p>
+              )}
+              {draft.buttons.map((button, index) => (
+                <div key={button.id} className="rounded-2xl border border-black/10 bg-white/35 p-4 md:p-5" data-testid={`editor-button-${button.id}`}>
+                  <div className="mb-4 flex items-center justify-between">
+                    <p className="mono text-[10px] tracking-[.14em] text-black/45">BUTTON {String(index + 1).padStart(2, '0')}</p>
+                    <button type="button" onClick={() => removeButton(button.id)} className="flex items-center gap-1.5 rounded-full border border-red-500/30 px-3 py-1.5 text-[11px] font-semibold text-red-600 transition hover:bg-red-500/10" data-testid={`button-remove-${button.id}`}><Trash2 size={13} /> حذف</button>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="الاسم (عربي)" value={button.label.ar} onChange={(value) => updateButtonLabel(button.id, 'ar', value)} />
+                    <Field label="Name (EN)" value={button.label.en} onChange={(value) => updateButtonLabel(button.id, 'en', value)} />
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-semibold tracking-wide text-black/60">ماذا يفعل الزر؟</span>
+                      <select className="field" value={button.action} onChange={(event) => updateButton(button.id, { action: event.target.value as ButtonAction })} data-testid={`select-action-${button.id}`}>
+                        <option value="link">يفتح رابط موقع</option>
+                        <option value="email">يفتح البريد الإلكتروني</option>
+                        <option value="phone">يتصل برقم هاتف</option>
+                        <option value="scroll">ينزل إلى قسم في الصفحة</option>
+                      </select>
+                    </label>
+                    <Field label={valueLabels[button.action]} value={button.value} onChange={(value) => updateButton(button.id, { value })} />
+                  </div>
+                </div>
+              ))}
+              <button type="button" onClick={addButton} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-black/25 py-4 text-sm font-semibold text-black/60 transition hover:bg-black/5" data-testid="button-add-button"><Plus size={16} /> إضافة زر</button>
+              <p className="text-xs leading-6 text-black/50">لكل زر اسم بالعربي والإنجليزي — يظهر لكل زائر حسب لغة الموقع عنده. أزرار «تمرير إلى قسم» تنزل بسرعة إلى القسم داخل الصفحة.</p>
             </div>
           )}
 

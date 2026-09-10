@@ -21,6 +21,15 @@ export type Project = {
   description: Bi;
 };
 
+export type ButtonAction = 'link' | 'email' | 'phone' | 'scroll';
+
+export type SiteButton = {
+  id: string;
+  label: Bi;
+  action: ButtonAction;
+  value: string;
+};
+
 export type Content = {
   navName: Bi;
   navContact: Bi;
@@ -75,6 +84,7 @@ export type PortfolioData = {
   phone: string;
   portrait: string;
   projects: Project[];
+  buttons: SiteButton[];
 };
 
 const publicAsset = (filename: string) => `${import.meta.env.BASE_URL}${filename}`;
@@ -177,6 +187,7 @@ export const defaultPortfolio: PortfolioData = {
   phone: '+20 100 482 1973',
   portrait: publicAsset('project-light.jpg'),
   projects: defaultProjects,
+  buttons: [],
 };
 
 // --- Migration / normalization ---------------------------------------------
@@ -215,6 +226,22 @@ function mergeTheme(raw: unknown): Theme {
   };
 }
 
+function mergeButtons(raw: unknown): SiteButton[] {
+  if (!Array.isArray(raw)) return [];
+  const actions: ButtonAction[] = ['link', 'email', 'phone', 'scroll'];
+  const out: SiteButton[] = [];
+  raw.forEach((item, index) => {
+    if (!item || typeof item !== 'object') return;
+    const b = item as Record<string, unknown>;
+    const label = mergeBi(b.label, bi('زر', 'Button'));
+    const value = typeof b.value === 'string' ? b.value : '';
+    const action = actions.includes(b.action as ButtonAction) ? (b.action as ButtonAction) : 'link';
+    if (!label.ar && !label.en) return;
+    out.push({ id: typeof b.id === 'string' && b.id ? b.id : `button-${index}`, label, action, value });
+  });
+  return out;
+}
+
 function mergeProjects(raw: unknown, legacy: unknown): Project[] {
   const list = Array.isArray(raw) && raw.length ? raw : Array.isArray(legacy) && legacy.length ? legacy : null;
   if (!list) return structuredClone(defaultProjects);
@@ -249,6 +276,7 @@ export function normalizePortfolio(raw: unknown): PortfolioData {
     phone: typeof data.phone === 'string' && data.phone ? data.phone : defaultPortfolio.phone,
     portrait: typeof data.portrait === 'string' && data.portrait ? data.portrait : defaultPortfolio.portrait,
     projects: mergeProjects(data.projects, legacy ? (legacy as Record<string, unknown>).projects : undefined),
+    buttons: mergeButtons(data.buttons),
   };
 }
 
