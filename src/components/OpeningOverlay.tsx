@@ -1,11 +1,23 @@
 import { useEffect, useState, type PointerEvent } from 'react';
 import { ArrowDown, MousePointer2 } from 'lucide-react';
 
-type OpeningOverlayProps = {
-  onComplete: () => void;
+type OpeningOverlayStrings = {
+  topLeft: string;
+  topRight: string;
+  kicker: string;
+  titleA: string;
+  titleB: string;
+  hint: string;
 };
 
-export function OpeningOverlay({ onComplete }: OpeningOverlayProps) {
+type OpeningOverlayProps = {
+  onComplete: () => void;
+  strings: OpeningOverlayStrings;
+  overlayBg: string;
+  overlayText: string;
+};
+
+export function OpeningOverlay({ onComplete, strings, overlayBg, overlayText }: OpeningOverlayProps) {
   const [opening, setOpening] = useState(false);
   const [cleared, setCleared] = useState(false);
   const [cursor, setCursor] = useState({
@@ -44,6 +56,8 @@ export function OpeningOverlay({ onComplete }: OpeningOverlayProps) {
       } ${cleared ? 'is-cleared' : ''}`}
       style={
         {
+          'background': overlayBg,
+          'color': overlayText,
           '--reveal-x': cursor.x,
           '--reveal-y': cursor.y,
           '--reveal-radius': opening ? '150vmax' : '155px',
@@ -53,7 +67,7 @@ export function OpeningOverlay({ onComplete }: OpeningOverlayProps) {
       onClick={reveal}
       role="button"
       tabIndex={0}
-      aria-label="افتح المعرض"
+      aria-label={strings.hint}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
@@ -63,29 +77,29 @@ export function OpeningOverlay({ onComplete }: OpeningOverlayProps) {
       data-testid="opening-overlay"
     >
       <div className="relative mx-auto flex h-full max-w-7xl flex-col justify-between px-6 py-7 md:px-10 md:py-10">
-        <div className="flex items-center justify-between text-[10px] uppercase tracking-[.22em] text-white/45">
-          <span className="mono">NW / 001</span>
-          <span>معرض شخصي</span>
+        <div className="flex items-center justify-between text-[10px] uppercase tracking-[.22em] opacity-45">
+          <span className="mono">{strings.topLeft}</span>
+          <span>{strings.topRight}</span>
         </div>
 
         <div className="max-w-2xl">
-          <p className="mb-6 text-xs tracking-[.22em] text-white/45">
-            لست بحاجة إلى أن ترى كل شيء
+          <p className="mb-6 text-xs tracking-[.22em] opacity-45">
+            {strings.kicker}
           </p>
 
           <h1 className="display text-[clamp(4.5rem,13vw,11rem)] leading-[.82] tracking-[-.055em]">
-            الضوء
+            {strings.titleA}
             <br />
-            <em className="text-white/45">يبدأ هنا.</em>
+            <em className="opacity-45">{strings.titleB}</em>
           </h1>
         </div>
 
         <div className="flex items-end justify-between">
-          <p className="max-w-[18rem] text-sm leading-7 text-white/52">
-            حرّك المؤشر. انقر عندما تصبح جاهزاً للدخول.
+          <p className="max-w-[18rem] text-sm leading-7 opacity-50">
+            {strings.hint}
           </p>
 
-          <div className="flex flex-col items-center gap-3 text-[10px] text-white/45">
+          <div className="flex flex-col items-center gap-3 text-[10px] opacity-45">
             <MousePointer2 size={16} strokeWidth={1.2} />
             <ArrowDown
               size={14}

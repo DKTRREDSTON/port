@@ -7,6 +7,8 @@ import NotFound from '@/pages/not-found';
 import { ProjectDetail } from '@/pages/ProjectDetail';
 import { PortfolioHome } from '@/pages/PortfolioHome';
 import { usePortfolio } from '@/hooks/use-portfolio';
+import { loadLang, saveLang, type Lang } from '@/lib/portfolio';
+import { useCallback, useState } from 'react';
 import {
   Route,
   Switch,
@@ -21,16 +23,25 @@ const routerBase = import.meta.env.BASE_URL.startsWith('.')
 
 function Router() {
   const { portfolio, updatePortfolio, resetPortfolio } = usePortfolio();
+  const [lang, setLang] = useState<Lang>(() => loadLang());
+  const toggleLang = useCallback(() => {
+    setLang((current) => {
+      const next = current === 'ar' ? 'en' : 'ar';
+      saveLang(next);
+      return next;
+    });
+  }, []);
+
   return (
     // Keep a shared shell (sidebar, navbar) outside the boundary so it
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/">
-          <PortfolioHome portfolio={portfolio} onSave={updatePortfolio} onReset={resetPortfolio} />
+          <PortfolioHome portfolio={portfolio} lang={lang} onToggleLang={toggleLang} onSave={updatePortfolio} onReset={resetPortfolio} />
         </Route>
         <Route path="/project/:id">
-          <ProjectDetail portfolio={portfolio} />
+          <ProjectDetail portfolio={portfolio} lang={lang} />
         </Route>
         <Route component={NotFound} />
       </Switch>
