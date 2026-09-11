@@ -198,6 +198,11 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
   async function readFile(target: 'portrait' | 'project-image' | 'project-file' | 'project-button-file', id: string | null, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/') && file.size > 40 * 1024 * 1024) {
+      window.alert('الملف كبير جداً (أكثر من 40 ميجابايت). اختر ملفاً أصغر أو اضغط رابطه مباشرة.');
+      event.target.value = '';
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async () => {
       let dataUrl = String(reader.result);
@@ -494,7 +499,7 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
           <div className="flex items-center gap-2">
             {saveState === 'saved' && <span className="text-xs font-semibold text-emerald-700" data-testid="editor-saved">تم النشر ✓</span>}
             {saveState === 'wrong-password' && <span className="text-xs font-semibold text-red-600" data-testid="editor-wrong">الكود غير صحيح</span>}
-            {saveState === 'failed' && <span className="text-xs font-semibold text-red-600" data-testid="editor-failed">فشل الحفظ — حاول مرة أخرى</span>}
+            {saveState === 'failed' && <span className="text-xs font-semibold text-red-600" data-testid="editor-failed">فشل الحفظ — إن كان هناك ملف مرفوع فربما يكون كبيراً جداً (الحد 40 ميجابايت). حاول مرة أخرى</span>}
             {(saveState === 'uploading' || saveState === 'saving') && <span className="text-xs font-semibold text-black/50">جارٍ النشر…</span>}
             <button type="button" onClick={handleReset} className="flex items-center gap-2 rounded-full border border-black/15 px-4 py-2.5 text-xs font-semibold text-black/60 transition hover:bg-black/5" data-testid="button-reset-editor"><RotateCcw size={14} /> استرجاع الأصلي</button>
             <button type="button" onClick={handleSave} disabled={saveState === 'uploading' || saveState === 'saving'} className="flex items-center gap-2 rounded-full bg-[#101216] px-6 py-2.5 text-sm font-semibold text-[#b9e3f0] transition hover:-translate-y-0.5 disabled:opacity-50" data-testid="button-save-editor"><Save size={15} /> نشر</button>

@@ -391,26 +391,21 @@ export async function publishPortfolio(data: PortfolioData, password: string): P
 
 // Uploads an image/file (as a data URL from the editor) to online storage
 // and returns its public URL, so big assets never bloat the saved content.
+// Files are uploaded as RAW BINARY (not base64 JSON): a 40MB file used to
+// crash the backend's memory limit when it was base64-encoded inside JSON.
 export async function uploadPortfolioAsset(password: string, dataUrl: string, name: string): Promise<string | null> {
   try {
     const blob = await (await fetch(dataUrl)).blob();
-    const contentBase64 = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(blob);
-    });
     const ext = (blob.type.split('/')[1] || 'bin').replace(/[^a-z0-9]/gi, '');
-    const res = await fetch(API_URL, {
+    const query = new URLSearchParams({
+      action: 'uploadImage',
+      password,
+      filename: `${name}-${Date.now()}.${ext}`,
+    });
+    const res = await fetch(`${API_URL}?${query}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'uploadImage',
-        password,
-        filename: `${name}-${Date.now()}.${ext}`,
-        contentType: blob.type,
-        contentBase64,
-      }),
+      headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+      body: blob,
     });
     if (!res.ok) return null;
     const json = await res.json();
