@@ -115,12 +115,50 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
     const emptyBi: Bi = { ar: 'مشروع جديد', en: 'New project' };
     setDraft((current) => ({
       ...current,
-      projects: [...current.projects, { id, year: '2025', image: fallbackProjectImage, downloadUrl: '', externalUrl: '', title: { ...emptyBi }, category: { ar: 'تصنيف', en: 'Category' }, description: { ar: 'اكتب وصف المشروع هنا.', en: 'Write the project description here.' } }],
+      projects: [...current.projects, { id, year: '2025', image: fallbackProjectImage, downloadUrl: '', externalUrl: '', buttons: [{ id: 'btn-download', label: { ar: 'تحميل الملف', en: 'Download file' }, action: 'download', value: '' }], title: { ...emptyBi }, category: { ar: 'تصنيف', en: 'Category' }, description: { ar: 'اكتب وصف المشروع هنا.', en: 'Write the project description here.' } }],
     }));
   }
 
   function removeProject(id: string) {
     setDraft((current) => ({ ...current, projects: current.projects.filter((project) => project.id !== id) }));
+  }
+
+  // --- per-project buttons (shown on that project's page) ---
+  function updateProjectButton(projectId: string, buttonId: string, patch: Partial<SiteButton>) {
+    setDraft((current) => ({
+      ...current,
+      projects: current.projects.map((project) => project.id === projectId
+        ? { ...project, buttons: project.buttons.map((button) => button.id === buttonId ? { ...button, ...patch } : button) }
+        : project),
+    }));
+  }
+
+  function updateProjectButtonLabel(projectId: string, buttonId: string, lang: 'ar' | 'en', value: string) {
+    setDraft((current) => ({
+      ...current,
+      projects: current.projects.map((project) => project.id === projectId
+        ? { ...project, buttons: project.buttons.map((button) => button.id === buttonId ? { ...button, label: { ...button.label, [lang]: value } } : button) }
+        : project),
+    }));
+  }
+
+  function addProjectButton(projectId: string) {
+    const id = `pbtn-${Date.now()}`;
+    setDraft((current) => ({
+      ...current,
+      projects: current.projects.map((project) => project.id === projectId
+        ? { ...project, buttons: [...project.buttons, { id, label: { ar: 'زر جديد', en: 'New button' }, action: 'link', value: '' }] }
+        : project),
+    }));
+  }
+
+  function removeProjectButton(projectId: string, buttonId: string) {
+    setDraft((current) => ({
+      ...current,
+      projects: current.projects.map((project) => project.id === projectId
+        ? { ...project, buttons: project.buttons.filter((button) => button.id !== buttonId) }
+        : project),
+    }));
   }
 
   // --- custom buttons ---
@@ -129,6 +167,15 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
     email: 'البريد (مثل hello@site.com)',
     phone: 'رقم الهاتف (مثل +20 100 000 0000)',
     scroll: 'اسم القسم (about أو projects أو contact)',
+    download: 'رابط الملف (أو ارفع ملفاً بالزر في الأسفل)',
+  };
+
+  const actionLabels: Record<ButtonAction, string> = {
+    link: 'يفتح رابط موقع',
+    email: 'يفتح البريد الإلكتروني',
+    phone: 'يتصل برقم هاتف',
+    scroll: 'ينزل إلى قسم في الصفحة',
+    download: 'يحمّل ملفاً',
   };
 
   function updateButton(id: string, patch: Partial<SiteButton>) {
@@ -148,7 +195,7 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
     setDraft((current) => ({ ...current, buttons: current.buttons.filter((button) => button.id !== id) }));
   }
 
-  async function readFile(target: 'portrait' | 'project-image' | 'project-file', id: string | null, event: ChangeEvent<HTMLInputElement>) {
+  async function readFile(target: 'portrait' | 'project-image' | 'project-file' | 'project-button-file', id: string | null, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
@@ -158,6 +205,10 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
       if (target === 'portrait') setDraft((current) => ({ ...current, portrait: dataUrl }));
       else if (target === 'project-image' && id) updateProject(id, { image: dataUrl });
       else if (target === 'project-file' && id) updateProject(id, { downloadUrl: dataUrl });
+      else if (target === 'project-button-file' && id) {
+        const [projectId, buttonId] = id.split('::');
+        if (projectId && buttonId) updateProjectButton(projectId, buttonId, { value: dataUrl });
+      }
     };
     reader.readAsDataURL(file);
   }
@@ -184,7 +235,17 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
         if (!url) return null;
         downloadUrl = url;
       }
-      projects.push({ ...project, image, downloadUrl });
+      const buttons: SiteButton[] = [];
+      for (const button of project.buttons) {
+        let value = button.value;
+        if (button.action === 'download' && value.startsWith('data:')) {
+          const url = await uploadPortfolioAsset(pass, value, `project-${project.id}-btn-${button.id}-file`);
+          if (!url) return null;
+          value = url;
+        }
+        buttons.push({ ...button, value });
+      }
+      projects.push({ ...project, image, downloadUrl, buttons });
     }
     return { ...data, portrait, projects };
   }
@@ -312,16 +373,6 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
                     </label>
                     <div className="grid flex-1 gap-3 md:grid-cols-2">
                       <Field label="السنة" value={project.year} onChange={(value) => updateProject(project.id, { year: value })} />
-                      <Field label="رابط خارجي (اختياري)" value={project.externalUrl} onChange={(value) => updateProject(project.id, { externalUrl: value })} />
-                      <div className="md:col-span-2">
-                        <label className="block">
-                          <span className="mb-2 block text-xs font-semibold tracking-wide text-black/60">ملف التحميل (اختياري)</span>
-                          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-black/25 px-3 py-2 text-xs text-black/55 transition hover:bg-black/5">
-                            <ImagePlus size={14} /> {project.downloadUrl ? 'ملف موجود — اضغط للتغيير' : 'اختر ملفاً'}
-                            <input type="file" className="hidden" onChange={(event) => readFile('project-file', project.id, event)} />
-                          </label>
-                        </label>
-                      </div>
                     </div>
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
@@ -331,6 +382,41 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
                     <Field label="Category (EN)" value={project.category.en} onChange={(value) => updateProjectBi(project.id, 'category', 'en', value)} />
                     <Field label="الوصف (عربي)" value={project.description.ar} onChange={(value) => updateProjectBi(project.id, 'description', 'ar', value)} multiline />
                     <Field label="Description (EN)" value={project.description.en} onChange={(value) => updateProjectBi(project.id, 'description', 'en', value)} multiline />
+                  </div>
+                  <div className="mt-4 rounded-xl border border-black/10 bg-white/30 p-3 md:p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <p className="text-xs font-semibold text-black/70">أزرار صفحة المشروع <span className="font-normal text-black/40">(تظهر تحت الوصف في صفحة هذا المشروع)</span></p>
+                      <button type="button" onClick={() => addProjectButton(project.id)} className="flex items-center gap-1.5 rounded-full border border-black/20 px-3 py-1.5 text-[11px] font-semibold text-black/70 transition hover:bg-black/5" data-testid={`button-add-pbtn-${project.id}`}><Plus size={13} /> إضافة زر</button>
+                    </div>
+                    {project.buttons.length === 0 && (
+                      <p className="text-[11px] leading-5 text-black/45">لا توجد أزرار لهذا المشروع بعد.</p>
+                    )}
+                    {project.buttons.map((button) => (
+                      <div key={button.id} className="mb-2 rounded-lg border border-black/10 bg-white/50 p-3" data-testid={`editor-pbtn-${button.id}`}>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <Field label="الاسم (عربي)" value={button.label.ar} onChange={(value) => updateProjectButtonLabel(project.id, button.id, 'ar', value)} />
+                          <Field label="Name (EN)" value={button.label.en} onChange={(value) => updateProjectButtonLabel(project.id, button.id, 'en', value)} />
+                          <label className="block">
+                            <span className="mb-2 block text-xs font-semibold tracking-wide text-black/60">ماذا يفعل الزر؟</span>
+                            <select className="field" value={button.action} onChange={(event) => updateProjectButton(project.id, button.id, { action: event.target.value as ButtonAction })} data-testid={`select-pbtn-action-${button.id}`}>
+                              {(['link', 'download', 'email', 'phone', 'scroll'] as ButtonAction[]).map((action) => (
+                                <option key={action} value={action}>{actionLabels[action]}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <Field label={valueLabels[button.action]} value={button.value} onChange={(value) => updateProjectButton(project.id, button.id, { value })} />
+                        </div>
+                        {button.action === 'download' && (
+                          <label className="mt-2 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-black/25 px-3 py-2 text-xs text-black/55 transition hover:bg-black/5">
+                            <ImagePlus size={14} /> {button.value.startsWith('data:') ? 'ملف مختار — يُرفع عند الحفظ' : 'أو ارفع ملفاً من جهازك'}
+                            <input type="file" className="hidden" onChange={(event) => readFile('project-button-file', `${project.id}::${button.id}`, event)} data-testid={`file-pbtn-${button.id}`} />
+                          </label>
+                        )}
+                        <div className="mt-2 text-left">
+                          <button type="button" onClick={() => removeProjectButton(project.id, button.id)} className="flex items-center gap-1.5 rounded-full border border-red-500/30 px-3 py-1 text-[10px] font-semibold text-red-600 transition hover:bg-red-500/10" data-testid={`button-remove-pbtn-${button.id}`}><Trash2 size={11} /> حذف الزر</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -358,10 +444,9 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
                     <label className="block">
                       <span className="mb-2 block text-xs font-semibold tracking-wide text-black/60">ماذا يفعل الزر؟</span>
                       <select className="field" value={button.action} onChange={(event) => updateButton(button.id, { action: event.target.value as ButtonAction })} data-testid={`select-action-${button.id}`}>
-                        <option value="link">يفتح رابط موقع</option>
-                        <option value="email">يفتح البريد الإلكتروني</option>
-                        <option value="phone">يتصل برقم هاتف</option>
-                        <option value="scroll">ينزل إلى قسم في الصفحة</option>
+                        {(['link', 'email', 'phone', 'scroll', 'download'] as ButtonAction[]).map((action) => (
+                          <option key={action} value={action}>{actionLabels[action]}</option>
+                        ))}
                       </select>
                     </label>
                     <Field label={valueLabels[button.action]} value={button.value} onChange={(value) => updateButton(button.id, { value })} />

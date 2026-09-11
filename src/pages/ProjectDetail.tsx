@@ -1,4 +1,4 @@
-import { ArrowRight, Download, ExternalLink, Mail, MoveUpLeft } from 'lucide-react';
+import { ArrowRight, Mail, MoveUpLeft } from 'lucide-react';
 import { Link, useLocation, useParams } from 'wouter';
 import type { CSSProperties } from 'react';
 import type { Lang, PortfolioData } from '@/lib/portfolio';
@@ -43,10 +43,7 @@ export function ProjectDetail({ portfolio, lang }: ProjectDetailProps) {
             <h1 className="display mt-7 text-[clamp(4.4rem,10vw,9rem)] leading-[.78] tracking-[-.06em]" data-testid="text-project-title">{project.title[lang]}</h1>
             <p className="mt-7 text-sm font-semibold">{project.category[lang]}</p>
             <p className="mt-8 max-w-md text-lg leading-8 text-black/65" data-testid="text-project-description">{project.description[lang]}</p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              {project.downloadUrl ? <a href={project.downloadUrl} download className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-xs text-[var(--site-accent)] transition hover:-translate-y-1" data-testid="link-download-project"><Download size={15} /> {t('detailDownload')}</a> : <button type="button" onClick={() => window.alert(lang === 'ar' ? 'يمكن إضافة رابط الملف من محرر المعرض.' : 'Add the file link from the gallery editor.')} className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-xs text-[var(--site-accent)] transition hover:-translate-y-1" data-testid="button-download-empty"><Download size={15} /> {t('detailDownload')}</button>}
-              {project.externalUrl && <a href={project.externalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-black px-5 py-3 text-xs transition hover:-translate-y-1 hover:bg-black hover:text-[var(--site-accent)]" data-testid="link-external-project"><ExternalLink size={15} /> {t('detailVisit')}</a>}
-            </div>
+            <CustomButtons buttons={project.buttons} lang={lang} className="mt-10" />
             <CustomButtons buttons={portfolio.buttons} lang={lang} className="mt-4" />
           </div>
           <div className="reveal reveal-2 relative overflow-hidden rounded-[2rem] bg-[#84cada] soft-shadow">

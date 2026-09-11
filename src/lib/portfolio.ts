@@ -12,6 +12,7 @@ export type Theme = {
 
 export type Project = {
   id: string;
+  buttons: SiteButton[];
   year: string;
   image: string;
   downloadUrl: string;
@@ -21,7 +22,7 @@ export type Project = {
   description: Bi;
 };
 
-export type ButtonAction = 'link' | 'email' | 'phone' | 'scroll';
+export type ButtonAction = 'link' | 'email' | 'phone' | 'scroll' | 'download';
 
 export type SiteButton = {
   id: string;
@@ -153,6 +154,7 @@ const defaultProjects: Project[] = [
     year: '2024',
     image: publicAsset('project-orbit.jpg'),
     downloadUrl: publicAsset('project-orbit.jpg'),
+    buttons: [],
     externalUrl: 'https://nasserwael.com',
     title: bi('مدار', 'Orbit'),
     category: bi('هوية بصرية', 'Visual identity'),
@@ -163,6 +165,7 @@ const defaultProjects: Project[] = [
     year: '2023',
     image: publicAsset('project-echo.jpg'),
     downloadUrl: publicAsset('project-echo.jpg'),
+    buttons: [],
     externalUrl: 'https://nasserwael.com',
     title: bi('صدى', 'Echo'),
     category: bi('حملة · إخراج فني', 'Campaign · Art direction'),
@@ -173,6 +176,7 @@ const defaultProjects: Project[] = [
     year: '2022',
     image: publicAsset('project-light.jpg'),
     downloadUrl: publicAsset('project-light.jpg'),
+    buttons: [],
     externalUrl: 'https://nasserwael.com',
     title: bi('ضوء جانبي', 'Side Light'),
     category: bi('تصوير · تركيب', 'Photography · Installation'),
@@ -228,7 +232,7 @@ function mergeTheme(raw: unknown): Theme {
 
 function mergeButtons(raw: unknown): SiteButton[] {
   if (!Array.isArray(raw)) return [];
-  const actions: ButtonAction[] = ['link', 'email', 'phone', 'scroll'];
+  const actions: ButtonAction[] = ['link', 'email', 'phone', 'scroll', 'download'];
   const out: SiteButton[] = [];
   raw.forEach((item, index) => {
     if (!item || typeof item !== 'object') return;
@@ -242,21 +246,43 @@ function mergeButtons(raw: unknown): SiteButton[] {
   return out;
 }
 
-function mergeProjects(raw: unknown, legacy: unknown): Project[] {
+function mergeProjects(raw: unknown, legacy: unknown, content: Content): Project[] {
   const list = Array.isArray(raw) && raw.length ? raw : Array.isArray(legacy) && legacy.length ? legacy : null;
-  if (!list) return structuredClone(defaultProjects);
+  if (!list) return structuredClone(defaultProjects).map((project) => ({
+    ...project,
+    // The template projects keep the classic download/visit buttons.
+    buttons: [
+      { id: 'btn-download', label: { ...content.detailDownload }, action: 'download', value: project.downloadUrl },
+      { id: 'btn-visit', label: { ...content.detailVisit }, action: 'link', value: project.externalUrl },
+    ],
+  }));
   return list.map((item, index) => {
     const rawProject = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
     const template = defaultProjects[index] ?? defaultProjects[0];
     const legacyTitle = typeof rawProject.title === 'string' ? rawProject.title : undefined;
     const legacyCategory = typeof rawProject.category === 'string' ? rawProject.category : undefined;
     const legacyDescription = typeof rawProject.description === 'string' ? rawProject.description : undefined;
+    const id = typeof rawProject.id === 'string' && rawProject.id ? rawProject.id : `project-${index}`;
+    const downloadUrl = typeof rawProject.downloadUrl === 'string' ? rawProject.downloadUrl : '';
+    const externalUrl = typeof rawProject.externalUrl === 'string' ? rawProject.externalUrl : '';
+    // Old records have no per-project buttons: turn the fixed download/visit
+    // buttons into normal buttons the editor can rename or delete.
+    const hasButtonsArray = Array.isArray(rawProject.buttons);
+    let buttons: SiteButton[];
+    if (hasButtonsArray) {
+      buttons = mergeButtons(rawProject.buttons);
+    } else {
+      buttons = [];
+      if (downloadUrl) buttons.push({ id: 'btn-download', label: { ...content.detailDownload }, action: 'download', value: downloadUrl });
+      if (externalUrl) buttons.push({ id: 'btn-visit', label: { ...content.detailVisit }, action: 'link', value: externalUrl });
+    }
     return {
-      id: typeof rawProject.id === 'string' && rawProject.id ? rawProject.id : `project-${index}`,
+      id,
+      buttons,
       year: typeof rawProject.year === 'string' ? rawProject.year : template.year,
       image: typeof rawProject.image === 'string' && rawProject.image ? rawProject.image : template.image,
-      downloadUrl: typeof rawProject.downloadUrl === 'string' ? rawProject.downloadUrl : '',
-      externalUrl: typeof rawProject.externalUrl === 'string' ? rawProject.externalUrl : '',
+      downloadUrl,
+      externalUrl,
       title: mergeBi(rawProject.title ?? legacyTitle, template.title),
       category: mergeBi(rawProject.category ?? legacyCategory, template.category),
       description: mergeBi(rawProject.description ?? legacyDescription, template.description),
@@ -269,13 +295,14 @@ export function normalizePortfolio(raw: unknown): PortfolioData {
   const data = raw as Record<string, unknown>;
   const hasNewShape = !!data.content;
   const legacy = hasNewShape ? undefined : data; // old flat record → map into Arabic
+  const content = mergeContent(data.content, legacy as Record<string, unknown> | undefined);
   return {
-    content: mergeContent(data.content, legacy as Record<string, unknown> | undefined),
+    content,
     theme: mergeTheme(data.theme),
     email: typeof data.email === 'string' && data.email ? data.email : defaultPortfolio.email,
     phone: typeof data.phone === 'string' && data.phone ? data.phone : defaultPortfolio.phone,
     portrait: typeof data.portrait === 'string' && data.portrait ? data.portrait : defaultPortfolio.portrait,
-    projects: mergeProjects(data.projects, legacy ? (legacy as Record<string, unknown>).projects : undefined),
+    projects: mergeProjects(data.projects, legacy ? (legacy as Record<string, unknown>).projects : undefined, content),
     buttons: mergeButtons(data.buttons),
   };
 }
