@@ -340,7 +340,7 @@ export function PortfolioEditor({ portfolio, initialPassword = '', onSave, onRes
 
           {tab === 'buttons' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm font-semibold">الأزرار الخاصة — تظهر تحت زر الاستكشاف في أول الصفحة</div>
+              <div className="flex items-center gap-2 text-sm font-semibold">الأزرار الخاصة — تظهر في أول الصفحة وتحت زر التحميل في صفحات المشاريع</div>
               {draft.buttons.length === 0 && (
                 <p className="rounded-2xl border border-dashed border-black/20 p-6 text-center text-xs leading-6 text-black/50">
                   لا توجد أزرار بعد. اضغط «إضافة زر» لإنشاء زر جديد، اكتب اسمه، وحدد ماذا يفعل.
