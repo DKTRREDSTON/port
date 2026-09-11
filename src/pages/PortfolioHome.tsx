@@ -3,7 +3,8 @@ import { ArrowLeft, ArrowUpLeft, Instagram, Mail, MapPin, Sparkles } from 'lucid
 import { Link, useLocation } from 'wouter';
 import { OpeningOverlay } from '@/components/OpeningOverlay';
 import { PortfolioEditor } from '@/components/PortfolioEditor';
-import { defaultTheme, verifyPortfolioCode, type ButtonAction, type Content, type Lang, type PortfolioData, type Project, type SiteButton, type Theme } from '@/lib/portfolio';
+import { defaultTheme, verifyPortfolioCode, type Content, type Lang, type PortfolioData, type Project, type Theme } from '@/lib/portfolio';
+import { CustomButtons } from '@/components/CustomButtons';
 
 type PortfolioHomeProps = {
   portfolio: PortfolioData;
@@ -26,15 +27,6 @@ function pick(content: Content, lang: Lang) {
   return (key: keyof Content) => content[key][lang] ?? content[key].ar;
 }
 
-// Custom buttons added from the editor: each one carries its own label and action.
-function buttonHref(action: ButtonAction, value: string): string {
-  const v = value.trim();
-  if (!v) return '';
-  if (action === 'email') return `mailto:${v}`;
-  if (action === 'phone') return `tel:${v.replace(/[^+\d]/g, '')}`;
-  if (action === 'link') return /^https?:\/\//i.test(v) ? v : `https://${v}`;
-  return '';
-}
 
 function ProjectGallery({ projects, lang, content, theme }: { projects: Project[]; lang: Lang; content: Content; theme: Theme }) {
   const [, navigate] = useLocation();
@@ -259,28 +251,7 @@ export function PortfolioHome({ portfolio, lang, onToggleLang, onSave, onReset }
           <h1 onPointerDown={handleSecretTap} className="display max-w-4xl cursor-default select-none touch-manipulation text-[clamp(4.7rem,12.5vw,10rem)] leading-[.8] tracking-[-.065em]" data-testid="text-hero-name">{t('name').split(' ').map((part, index) => <span key={`${part}-${index}`} className="block">{part}</span>)}</h1>
           <p className="mt-10 max-w-md text-base leading-8 text-black/65 md:text-lg" data-testid="text-hero-bio">{t('bio')}</p>
           <a href="#projects" className="group mt-8 inline-flex items-center gap-3 border-b border-black pb-2 text-sm font-semibold transition hover:gap-5" data-testid="link-view-projects">{t('heroCta')} <ArrowLeft size={16} className="transition group-hover:-translate-x-1" /></a>
-          {portfolio.buttons.length > 0 && (
-            <div className="mt-6 flex flex-wrap items-center gap-2.5" data-testid="custom-buttons">
-              {portfolio.buttons.map((button) => {
-                const label = button.label[lang] || button.label.ar;
-                const pill = 'inline-flex items-center gap-2 rounded-full border border-black/25 bg-white/25 px-4 py-2 text-xs font-semibold transition hover:bg-[var(--site-dark)] hover:text-[var(--site-accent)]';
-                if (button.action === 'scroll') {
-                  return (
-                    <button key={button.id} type="button" onClick={() => document.getElementById(button.value.trim())?.scrollIntoView({ behavior: 'smooth' })} className={pill} data-testid={`custom-button-${button.id}`}>
-                      {label} <ArrowLeft size={13} className="-rotate-45 rtl:rotate-[225deg]" />
-                    </button>
-                  );
-                }
-                const href = buttonHref(button.action, button.value);
-                if (!href) return null;
-                return (
-                  <a key={button.id} href={href} target={button.action === 'link' ? '_blank' : undefined} rel={button.action === 'link' ? 'noreferrer' : undefined} className={pill} data-testid={`custom-button-${button.id}`}>
-                    {label} <ArrowLeft size={13} className="-rotate-45 rtl:rotate-[225deg]" />
-                  </a>
-                );
-              })}
-            </div>
-          )}
+          <CustomButtons buttons={portfolio.buttons} lang={lang} className="mt-6" />
         </div>
         <div className="relative hidden min-h-[28rem] items-center justify-center md:flex md:min-h-[38rem]">
           <div className="pulse-ring absolute h-[19rem] w-[19rem] rounded-full border border-black/15 md:h-[29rem] md:w-[29rem]" />

@@ -2,6 +2,7 @@ import { ArrowRight, Download, ExternalLink, Mail, MoveUpLeft } from 'lucide-rea
 import { Link, useLocation, useParams } from 'wouter';
 import type { CSSProperties } from 'react';
 import type { Lang, PortfolioData } from '@/lib/portfolio';
+import { CustomButtons } from '@/components/CustomButtons';
 
 type ProjectDetailProps = { portfolio: PortfolioData; lang: Lang };
 
@@ -46,6 +47,7 @@ export function ProjectDetail({ portfolio, lang }: ProjectDetailProps) {
               {project.downloadUrl ? <a href={project.downloadUrl} download className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-xs text-[var(--site-accent)] transition hover:-translate-y-1" data-testid="link-download-project"><Download size={15} /> {t('detailDownload')}</a> : <button type="button" onClick={() => window.alert(lang === 'ar' ? 'يمكن إضافة رابط الملف من محرر المعرض.' : 'Add the file link from the gallery editor.')} className="inline-flex items-center gap-2 rounded-full bg-black px-5 py-3 text-xs text-[var(--site-accent)] transition hover:-translate-y-1" data-testid="button-download-empty"><Download size={15} /> {t('detailDownload')}</button>}
               {project.externalUrl && <a href={project.externalUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-black px-5 py-3 text-xs transition hover:-translate-y-1 hover:bg-black hover:text-[var(--site-accent)]" data-testid="link-external-project"><ExternalLink size={15} /> {t('detailVisit')}</a>}
             </div>
+            <CustomButtons buttons={portfolio.buttons} lang={lang} className="mt-4" />
           </div>
           <div className="reveal reveal-2 relative overflow-hidden rounded-[2rem] bg-[#84cada] soft-shadow">
             <div className="aspect-[1.15/1] md:aspect-[1.25/1]"><img src={project.image} alt={project.title[lang]} className="h-full w-full object-cover" data-testid="img-project-detail" /></div>
