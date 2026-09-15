@@ -296,7 +296,7 @@ export function PortfolioHome({ portfolio, lang, onToggleLang, onSave, onReset }
       </section>
 
       <footer className="mx-auto flex max-w-7xl flex-col gap-5 border-t border-black/15 px-6 py-7 text-[10px] md:flex-row md:items-center md:justify-between md:px-10">
-        <span className="mono tracking-[.16em]">{t('footerTag')}</span>
+        <span className="mono tracking-[.16em]">{t('footerTag')} <span className="text-black/45" data-testid="text-handle">— nasser_wael_gamedev</span></span>
         <div className="flex items-center gap-5"><a href={`mailto:${portfolio.email}`} className="transition hover:underline" data-testid="link-footer-email">{t('footerEmail')}</a><a href="https://instagram.com" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 transition hover:underline" data-testid="link-instagram"><Instagram size={13} /> {t('footerInstagram')}</a><span className="text-black/45">{t('footerYear')}</span></div>
       </footer>
       {codePromptOpen && (
